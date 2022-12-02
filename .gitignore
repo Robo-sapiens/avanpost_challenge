@@ -1,0 +1,6 @@
+# Dataset
+dataset/
+
+# Python
+.ipynb_checkpoints
+__pycache__/
