@@ -1,7 +1,7 @@
-from torch.utils.data import Dataset
-from torchvision import transforms
 from PIL import Image
 from sklearn.preprocessing import LabelEncoder
+from torch.utils.data import Dataset
+from torchvision import transforms
 
 
 class SOCOFingDataset(Dataset):
@@ -15,8 +15,6 @@ class SOCOFingDataset(Dataset):
             ]
         )
         self.label_encoder = LabelEncoder()
-
-        # if self.mode != "test":
         self.labels = [file.name[0 : file.name.find("_")] for file in self.files]
         self.label_encoder.fit(self.labels)
 
@@ -27,9 +25,6 @@ class SOCOFingDataset(Dataset):
         x = self._load_sample(self.files[index])
         if self.transforms:
             x = self.transforms(x)
-        # if self.mode == "test":
-        #     return x
-        # else:
         y = self.labels[index]
         y = self.label_encoder.transform([y])
         y = y.item()
