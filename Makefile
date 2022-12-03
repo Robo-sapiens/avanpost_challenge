@@ -1,4 +1,7 @@
-.PHONY: format
+.PHONY: install format
+
+install:
+	pip install -r requirements.txt
 
 format:
 	python3 -m black .
