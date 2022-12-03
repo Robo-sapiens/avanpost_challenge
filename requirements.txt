@@ -9,3 +9,4 @@ isort==5.10.1
 mypy==0.991
 sklearn==0.0.post1
 matplotlib==3.6.2
+jupyter-black==0.3.3

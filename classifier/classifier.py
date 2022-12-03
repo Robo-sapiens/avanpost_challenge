@@ -16,8 +16,8 @@ class NN(nn.Module):
 
 class FingerprintClassifier:
     def __init__(self, path: str) -> None:
-        model = NN(64 * 64)
-        model.load_state_dict(torch.load(path))
+        self.model = NN(64 * 64)
+        self.model.load_state_dict(torch.load(path))
         self.model.eval()
         self.device = torch.device("cuda:0")
 
