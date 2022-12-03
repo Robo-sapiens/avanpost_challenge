@@ -1,6 +1,17 @@
-from PIL import Image
-import torch
 import numpy as np
+import torch
+from PIL import Image
+from torch import nn
+
+
+class NN(nn.Module):
+    def __init__(self, input_size):
+        super(NN, self).__init__()
+        self.fc1 = nn.Linear(input_size, 600)
+
+    def forward(self, x):
+        x = self.fc1(x)
+        return x
 
 
 class FingerprintClassifier:
