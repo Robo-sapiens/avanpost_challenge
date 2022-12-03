@@ -48,6 +48,9 @@ func handleRequests(imageMap map[string]string) {
 		reqBody, _ := ioutil.ReadAll(r.Body)
 		var imageMap map[string]string
 		json.Unmarshal(reqBody, &imageMap)
+		for k, v := range imageMap {
+			fmt.Fprintf(w, "%s: %s\n", k, v)
+		}
 		// TODO UNIMPLEMENT
 		// after get result?     json.NewEncoder(w).Encode(...)
 	})
