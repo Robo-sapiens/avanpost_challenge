@@ -1,11 +1,9 @@
 package main
 
 import (
-	"bufio"
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io"
 	"io/fs"
 	"io/ioutil"
 	"log"
@@ -13,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sync"
 )
 
 var jsonFilePath string
@@ -57,8 +56,11 @@ func handleRequests(imageMap map[string]string) {
 		json.Unmarshal(reqBody, &imageMap)
 		for k, v := range imageMap {
 			fmt.Fprintf(w, "%s: %s\n", k, v)
-			askClassifier(v)
+      if !fileExists(v) {
+        log.Printf("File %s with filepath %s do not exists\n", k, v)
+      }
 		}
+		askClassifier(imageMap)
 	})
 	log.Fatal(http.ListenAndServe(":10000", nil))
 }
@@ -86,38 +88,48 @@ func exists(filename string) (fs.FileInfo, bool) {
 	return info, true
 }
 
-func askClassifier(filename string) {
-	//	if !fileExists(filename) {
-	//		return
-	//	}
+func askClassifier(imageMap map[string]string) {
 
-	//TODO PATH?
-	cmd := exec.Command("python3", "../classifier/main.py", "--fifo", filename)
-	_, err := cmd.StdoutPipe()
-	if err != nil {
-		panic(err)
+	cmd := "python 3 ../classifier/main.py"
+	args := []string{"--fifo"}
+
+	tasks := make(chan *exec.Cmd, 64)
+
+	var wg sync.WaitGroup
+	// env var this size TODO
+	for i := 0; i < 4; i++ {
+		wg.Add(1)
+		go func(num int, w *sync.WaitGroup) {
+			defer w.Done()
+
+			var (
+				out []byte
+				err error
+			)
+
+			for cmd := range tasks {
+				out, err = cmd.Output()
+				if err != nil {
+					log.Fatal("can't get stdout:", err)
+				}
+				fmt.Printf("goroutine %d commands output %s\n", num, string(out))
+			}
+		}(i, &wg)
 	}
 
-	_, err = cmd.StderrPipe()
-	if err != nil {
-		panic(err)
+	//TODO Process file ?
+	for k, v := range imageMap {
+		args = append(args, v)
+		tasks <- exec.Command(cmd, args...)
+		fmt.Printf("k: %v\n", k)
 	}
 
-	err = cmd.Start()
-	if err != nil {
-		panic(err)
-	}
-	//	 panic("foo")
-	//
-	//		go copyOutput(stdout)
-	//		go copyOutput(stderr)
-}
+	close(tasks)
 
-func copyOutput(r io.Reader) {
-	scanner := bufio.NewScanner(r)
-	for scanner.Scan() {
-		//	fmt.Println(scanner.Text())
-	}
+	wg.Wait()
+
+	fmt.Println("end")
+
 }
 
 func main() {
