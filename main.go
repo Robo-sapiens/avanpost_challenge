@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 )
@@ -26,7 +27,7 @@ func generateJson(relPath string, input string) {
 		log.Fatal(err)
 	}
 
-  jsonData := map[string]string{}
+	jsonData := map[string]string{}
 	for i, file := range files {
 		fieldName := fmt.Sprintf("image_%d", i)
 		jsonData[fieldName] = file.Name()
@@ -36,8 +37,24 @@ func generateJson(relPath string, input string) {
 	ioutil.WriteFile(input, jsonFile, 0644)
 }
 
-func main() {
+func handleRequests(imageMap map[string]string) {
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("endpoint to root")
+		for k, v := range imageMap {
+			fmt.Fprintf(w, "%s: %s\n", k, v)
+		}
+	})
+	http.HandleFunc("/data", func(w http.ResponseWriter, r *http.Request) {
+		reqBody, _ := ioutil.ReadAll(r.Body)
+		var imageMap map[string]string
+		json.Unmarshal(reqBody, &imageMap)
+		// TODO UNIMPLEMENT
+		// after get result?     json.NewEncoder(w).Encode(...)
+	})
+	log.Fatal(http.ListenAndServe(":10000", nil))
+}
 
+func main() {
 	flag.Parse()
 
 	fmt.Printf("jsonFilePath: %v\n", jsonFilePath)
@@ -58,12 +75,5 @@ func main() {
 
 	json.Unmarshal(byteJsonValue, &imageMap)
 
-	keys := make([]string, 0, len(imageMap))
-	for k := range imageMap {
-		keys = append(keys, k)
-	}
-
-	for _, v := range keys {
-		fmt.Printf("v: %v\n", v)
-	}
+	handleRequests(imageMap)
 }
