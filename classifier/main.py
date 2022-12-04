@@ -7,12 +7,8 @@ from typing import Any
 from classifier import FingerprintClassifier
 
 
-def _load_model() -> Any:
-    path = os.environ.get("MODEL_PATH")
-    if path is not None:
-        return FingerprintClassifier(path)
-    else:
-        raise Exception("Environment variable 'MODEL_PATH' not found")
+def _load_model(path: str) -> Any:
+    return FingerprintClassifier(os.path.join("models", "nn_sm_acc_99"))
 
 
 def cli_loop(model: Any) -> None:
@@ -55,7 +51,7 @@ if __name__ == "__main__":
     group.add_argument("--cli", action="store_true")
     args = parser.parse_args()
     try:
-        model = _load_model()
+        model = _load_model(os.path.join("models", "nn_sm_acc_99"))
         if args.fifo is not None:
             fifo_loop(model, args.fifo)
         elif args.cli is not None:
