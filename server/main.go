@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io"
 	"io/fs"
 	"io/ioutil"
 	"log"
@@ -17,12 +16,10 @@ import (
 
 var jsonFilePath string
 var generateJsonFlag string
-var isWeb bool
 
 func init() {
 	flag.StringVar(&jsonFilePath, "file", "", "path")
 	flag.StringVar(&generateJsonFlag, "gen-json", "", "generate json from pics folder")
-	flag.BoolVar(&isWeb, "web", false, "web server run")
 }
 
 func generateJson(relPath string, input string) {
@@ -59,9 +56,9 @@ func handleRequests(imageMap map[string]string) {
 		json.Unmarshal(reqBody, &imageMap)
 		for k, v := range imageMap {
 			fmt.Fprintf(w, "%s: %s\n", k, v)
-			if !fileExists(v) {
-				log.Printf("File %s with filepath %s do not exists\n", k, v)
-			}
+      if !fileExists(v) {
+        log.Printf("File %s with filepath %s do not exists\n", k, v)
+      }
 		}
 		askClassifier(imageMap)
 	})
@@ -93,74 +90,39 @@ func exists(filename string) (fs.FileInfo, bool) {
 
 func askClassifier(imageMap map[string]string) {
 
-	cmd := "python3"
-	args := []string{"../classifier/main.py", "--cli"}
+	cmd := "python 3 ../classifier/main.py"
+	args := []string{"--fifo"}
 
-	tCmd := exec.Command(cmd, args...)
-
-	stdin, err := tCmd.StdinPipe()
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	go func() {
-		defer stdin.Close()
-		io.WriteString(stdin, "430__F_Right_little_finger_CR.BMP")
-	}()
-
-  tCmd.Wait()
-
-	out, err := tCmd.CombinedOutput()
-	if err != nil {
-		log.Fatal(err)
-	}
-  fmt.Println("sfdg")
-
-	fmt.Printf("string(out): %v\n", string(out))
 	tasks := make(chan *exec.Cmd, 64)
 
 	var wg sync.WaitGroup
 	// env var this size TODO
-	sizeOf := 4
-	for k, v := range imageMap {
-		for i := 0; i < sizeOf; i++ {
-			wg.Add(1)
-			go func(num int, w *sync.WaitGroup) {
-				defer w.Done()
+	for i := 0; i < 4; i++ {
+		wg.Add(1)
+		go func(num int, w *sync.WaitGroup) {
+			defer w.Done()
 
-				var (
-					out   []byte
-					err   error
-					stdin io.WriteCloser
-				)
+			var (
+				out []byte
+				err error
+			)
 
-				for cmd := range tasks {
-					fmt.Println("into tasks")
-					stdin, err = cmd.StdinPipe()
-					if err != nil {
-						log.Fatalln(err)
-					}
-					defer stdin.Close()
-					fmt.Printf("v: %v\n", v)
-					io.WriteString(stdin, v)
-
-					cmd.Wait()
-					out, err = cmd.Output()
-					fmt.Printf("cmd.Dir: %v\n", cmd.Dir)
-					fmt.Printf("cmd.Err: %v\n", cmd.Err)
-					fmt.Printf("cmd.Path: %v\n", cmd.Path)
-					fmt.Printf("cmd.Args: %v\n", cmd.Args)
-					if err != nil {
-						log.Fatal("can't get stdout: ", err)
-					}
-					fmt.Printf("goroutine %d commands output %s\n", num, string(out))
+			for cmd := range tasks {
+				out, err = cmd.Output()
+				if err != nil {
+					log.Fatal("can't get stdout:", err)
 				}
-			}(i, &wg)
-		}
-		fmt.Printf("k: %v\n", k)
+				fmt.Printf("goroutine %d commands output %s\n", num, string(out))
+			}
+		}(i, &wg)
 	}
 
-	tasks <- exec.Command(cmd, args...)
+	//TODO Process file ?
+	for k, v := range imageMap {
+		args = append(args, v)
+		tasks <- exec.Command(cmd, args...)
+		fmt.Printf("k: %v\n", k)
+	}
 
 	close(tasks)
 
@@ -181,6 +143,7 @@ func main() {
 
 	var imageMap map[string]string
 	if jsonFilePath != "" {
+
 		jsonFile, err := os.Open(jsonFilePath)
 		defer jsonFile.Close()
 		if err != nil {
@@ -189,16 +152,7 @@ func main() {
 
 		byteJsonValue, _ := ioutil.ReadAll(jsonFile)
 		json.Unmarshal(byteJsonValue, &imageMap)
-		tmpMap := make(map[string]string, 1)
-		for k, v := range imageMap {
-			tmpMap[k] = v
-			break
-		}
-		fmt.Printf("tmpMap: %v\n", tmpMap)
-		askClassifier(tmpMap)
 	}
 
-	if isWeb {
-		handleRequests(imageMap)
-	}
+	handleRequests(imageMap)
 }
