@@ -1,30 +1,60 @@
 import argparse
 import os
-from classifier import FingerprintClassifier
+from sys import stdin
 from time import time
+from typing import Any
+
+from classifier import FingerprintClassifier
 
 
-def main(fifo: str) -> None:
+def _load_model(path: str) -> Any:
+    return FingerprintClassifier(os.path.join("models", "nn_sm_acc_99"))
+
+
+def cli_loop(model: Any) -> None:
+    for line in stdin:
+        line = line.strip()
+        if line == "exit":
+            print("Exiting")
+            return
+        try:
+            start = time()
+            y = model.load_predict(line)
+            print(y)
+            end = time()
+            print(f"time: {end - start}")
+        except Exception as e:
+            print(e)
+
+
+def fifo_loop(model: Any, fifo: str) -> None:
     if not os.path.exists(fifo):
         raise Exception(f"Fifo with name {fifo} does not exist")
 
-    model = FingerprintClassifier(os.path.join("models", "nn_sm_acc_99"))
-
-    with open(args.fifo, "rw") as fifo:
+    with open(args.fifo, "r+") as fifo:
         path = fifo.read()
 
         start = time()
-        klass = model.predict(path)
+        y = model.predict(path)
         end = time()
 
         print(end - start)
 
-        fifo.write(klass)
+        fifo.write(y)
         fifo.flush()
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--fifo", required=True)
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("--fifo")
+    group.add_argument("--cli", action="store_true")
     args = parser.parse_args()
-    main(args.fifo)
+    try:
+        model = _load_model(os.path.join("models", "nn_sm_acc_99"))
+        if args.fifo is not None:
+            fifo_loop(model, args.fifo)
+        elif args.cli is not None:
+            cli_loop(model)
+    except Exception as e:
+        print(e)

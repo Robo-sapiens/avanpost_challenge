@@ -1,7 +1,7 @@
-import numpy as np
 import torch
 from PIL import Image
 from torch import nn
+from torchvision import transforms
 
 
 class NN(nn.Module):
@@ -20,16 +20,26 @@ class FingerprintClassifier:
         self.model.load_state_dict(torch.load(path))
         self.model.eval()
         self.device = torch.device("cuda:0")
+        self.model.to(self.device)
 
-    def predict(self, path: str) -> int:
-        X = parse_fingerprints(path, shape=(64, 64))
+    def predict(self, X) -> int:
+        y = self.model(X)
+        y = torch.argmax(y, 1).cpu().numpy()[0]
+        return y + 1
+
+    def load_predict(self, path: str):
+        X = _load_transform_image(path)
         X = X.view(-1, 64 * 64).to(self.device)
-        return self.model(X.view())
+        return self.predict(X)
 
 
-def parse_fingerprints(files, shape=(128, 128)):
-    X = np.zeros(shape=(len(files), shape[0] * shape[1]))
-    for i, file in enumerate(files):
-        image = Image.open(file).convert("L").resize(shape)
-        X[i, :] = np.asarray(image).flatten()
-    return X
+def _load_transform_image(path: str):
+    image = Image.open(path)
+    image = image.convert("L")
+    t = transforms.Compose(
+        [
+            transforms.ToTensor(),
+            transforms.Resize((64, 64)),
+        ]
+    )
+    return t(image)
