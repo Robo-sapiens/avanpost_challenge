@@ -1,5 +1,10 @@
 # Avanpost Challenge. Team Robo sapiens
 
+## Team
+
+* Vadim Sofin
+* Sergey Khil
+
 ## Usage: 
 
 ```bash
