@@ -8,6 +8,15 @@ export MODEL_PATH="../models/nn_sm_acc_99
 go run . --file ../input.json | python3 ../classifier/main.py --cli
 ```
 
+to use web 
+```bash
+#server
+PICS=../SOCOFing/Real/ MODEL_PATH="../models/nn_sm_acc_99" go run . -web
+
+# on client
+make curl
+```
+
 ## Workspace setup
 
 ### Python env
