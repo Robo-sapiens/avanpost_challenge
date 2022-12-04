@@ -1,6 +1,12 @@
 # Avanpost Challenge. Team Robo sapiens
 
-## Usage: go run . -file input.json
+## Usage: 
+
+```bash
+export PICS=../SOCOFing/Real/ 
+export MODEL_PATH="../models/nn_sm_acc_99
+go run . --file ../input.json | python3 ../classifier/main.py --cli
+```
 
 ## Workspace setup
 

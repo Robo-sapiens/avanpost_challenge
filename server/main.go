@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -95,28 +96,32 @@ func askClassifier(imageMap map[string]string) {
 
 	cmd := "python3"
 	args := []string{"../classifier/main.py", "--cli"}
-
-	tCmd := exec.Command(cmd, args...)
-
-	stdin, err := tCmd.StdinPipe()
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	go func() {
-		defer stdin.Close()
-		io.WriteString(stdin, "430__F_Right_little_finger_CR.BMP")
-	}()
-
-  tCmd.Wait()
-
-	out, err := tCmd.CombinedOutput()
-	if err != nil {
-		log.Fatal(err)
-	}
-  fmt.Println("sfdg")
-
-	fmt.Printf("string(out): %v\n", string(out))
+	//
+	//	tCmd := exec.Command(cmd, args...)
+	//
+	//	stdin, err := tCmd.StdinPipe()
+	//	if err != nil {
+	//		log.Fatalln(err)
+	//	}
+	//
+	//	go func() {
+	//		defer stdin.Close()
+	//		io.WriteString(stdin, "430__F_Right_little_finger_CR.BMP")
+	//	}()
+	//
+	//  tCmd.Wait()
+	//
+	//	out, err := tCmd.CombinedOutput()
+	//	if err != nil {
+	//		log.Fatal(err)
+	//	}
+	//  fmt.Printf("tCmd.Dir: %v\n", tCmd.Dir)
+	//  fmt.Printf("tCmd.Args: %v\n", tCmd.Args)
+	//  fmt.Printf("tCmd.Path: %v\n", tCmd.Path)
+	//  fmt.Printf("tCmd.Env: %v\n", tCmd.Env)
+	//  fmt.Println("sfdg")
+	//
+	//	fmt.Printf("string(out): %v\n", string(out))
 	tasks := make(chan *exec.Cmd, 64)
 
 	var wg sync.WaitGroup
@@ -144,7 +149,7 @@ func askClassifier(imageMap map[string]string) {
 					fmt.Printf("v: %v\n", v)
 					io.WriteString(stdin, v)
 
-					cmd.Wait()
+					//	cmd.Wait()
 					out, err = cmd.Output()
 					fmt.Printf("cmd.Dir: %v\n", cmd.Dir)
 					fmt.Printf("cmd.Err: %v\n", cmd.Err)
@@ -173,11 +178,12 @@ func askClassifier(imageMap map[string]string) {
 func main() {
 	flag.Parse()
 
-	fmt.Printf("jsonFilePath: %v\n", jsonFilePath)
+//	fmt.Printf("jsonFilePath: %v\n", jsonFilePath)
 
 	if generateJsonFlag != "" && dirExists(generateJsonFlag) {
 		generateJson(generateJsonFlag, jsonFilePath)
 	}
+//	foo("51__M_Left_ring_finger_CR.BMP")
 
 	var imageMap map[string]string
 	if jsonFilePath != "" {
@@ -189,16 +195,89 @@ func main() {
 
 		byteJsonValue, _ := ioutil.ReadAll(jsonFile)
 		json.Unmarshal(byteJsonValue, &imageMap)
-		tmpMap := make(map[string]string, 1)
-		for k, v := range imageMap {
-			tmpMap[k] = v
-			break
-		}
-		fmt.Printf("tmpMap: %v\n", tmpMap)
-		askClassifier(tmpMap)
+    for _, v := range imageMap {
+      fmt.Printf("%v\n", v)
+    }
+//		tmpMap := make(map[string]string, 1)
+//		for k, v := range imageMap {
+//			tmpMap[k] = v
+//      fmt.Printf("%v\n", v)
+//			break
+//		}
+//		askClassifier(tmpMap)
 	}
 
 	if isWeb {
 		handleRequests(imageMap)
 	}
+}
+
+// CapturingPassThroughWriter is a writer that remembers
+// data written to it and passes it to w
+type CapturingPassThroughWriter struct {
+	buf bytes.Buffer
+	w   io.Writer
+}
+
+// NewCapturingPassThroughWriter creates new CapturingPassThroughWriter
+func NewCapturingPassThroughWriter(w io.Writer) *CapturingPassThroughWriter {
+	return &CapturingPassThroughWriter{
+		w: w,
+	}
+}
+
+func (w *CapturingPassThroughWriter) Write(d []byte) (int, error) {
+	w.buf.Write(d)
+	return w.w.Write(d)
+}
+
+// Bytes returns bytes written to the writer
+func (w *CapturingPassThroughWriter) Bytes() []byte {
+	return w.buf.Bytes()
+}
+
+func foo(file string) {
+
+	py := "python3"
+	args := []string{"../classifier/main.py", "--cli"}
+	cmd := exec.Command(py, args...)
+  
+
+	var errStdout, errStderr error
+//	stdoutIn, _ := cmd.StdoutPipe()
+//	stderrIn, _ := cmd.StderrPipe()
+	stdout := NewCapturingPassThroughWriter(os.Stdout)
+	stderr := NewCapturingPassThroughWriter(os.Stderr)
+	stdin := NewCapturingPassThroughWriter(os.Stdin)
+	err := cmd.Start()
+	if err != nil {
+		log.Fatalf("cmd.Start() failed with '%s'\n", err)
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	go func() {
+		//_, errStdout = io.Copy(stdout, stdoutIn)
+    io.WriteString(stdin, file)
+		wg.Done()
+	}()
+
+//	_, errStderr = io.Copy(stderr, stderrIn)
+	wg.Wait()
+
+	err = cmd.Wait()
+	if err != nil {
+		log.Fatalf("cmd.Run() failed with %s\n", err)
+	}
+  out, err :=  cmd.Output()
+  if err != nil {
+    log.Fatalf("output error is %s", err)
+  }
+  fmt.Printf("string(out): %v\n", string(out))
+	if errStdout != nil || errStderr != nil {
+		log.Fatalf("failed to capture stdout or stderr\n")
+	}
+	outStr, errStr := string(stdout.Bytes()), string(stderr.Bytes())
+	fmt.Printf("\nout:\n%s\nerr:\n%s\n", outStr, errStr)
 }

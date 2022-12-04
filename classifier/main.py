@@ -16,6 +16,7 @@ def _load_model() -> Any:
 
 
 def cli_loop(model: Any) -> None:
+    pics_dir = os.environ.get("PICS")
     for line in stdin:
         line = line.strip()
         if line == "exit":
@@ -23,7 +24,7 @@ def cli_loop(model: Any) -> None:
             return
         try:
             start = time()
-            y = model.load_predict(line)
+            y = model.load_predict(os.path.join(pics_dir,line))
             print(y)
             end = time()
             print(f"time: {end - start}")
